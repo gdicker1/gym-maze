@@ -1,4 +1,5 @@
 import numpy as np
+from copy import deepcopy
 
 import gym
 from gym import error, spaces, utils
@@ -59,6 +60,8 @@ class MazeEnv(gym.Env):
         # Just need to initialize the relevant attributes
         self.configure()
 
+        self.visited = set()
+
     def __del__(self):
         if self.enable_render is True:
             self.maze_view.quit_game()
@@ -71,19 +74,28 @@ class MazeEnv(gym.Env):
         return [seed]
 
     def step(self, action):
+        prev_state = deepcopy(self.state)
+        self.visited.add(tuple(self.state))
         if isinstance(action, int):
             self.maze_view.move_robot(self.ACTION[action])
         else:
             self.maze_view.move_robot(action)
 
+        self.state = self.maze_view.robot
+
         if np.array_equal(self.maze_view.robot, self.maze_view.goal):
             reward = 1
             done = True
+        elif np.array_equal(self.state, prev_state):
+            # movement chosen that puts it into the same state
+            reward = -0.75
+            done = False
+        elif tuple(self.state) in self.visited:
+            reward = -0.25
+            done=False
         else:
             reward = -0.1/(self.maze_size[0]*self.maze_size[1])
             done = False
-
-        self.state = self.maze_view.robot
 
         info = {}
 
